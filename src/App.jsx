@@ -307,6 +307,8 @@ export default function App() {
   const [chatChannel, setChatChannel] = useState('general');
   const [chatViewMode, setChatViewMode] = useState('list');
   const [activeVideo, setActiveVideo] = useState(null);
+  const [selectedScriptId, setSelectedScriptId] = useState(null);
+const [expandedPost, setExpandedPost] = useState(null);
   const [inspectUser, setInspectUser] = useState(null);
 
   const showToast = useCallback((message, type = 'info') => {
@@ -1711,8 +1713,7 @@ function ProjectBoard({ projects, tasks, videos, scripts, posts, userProfile, sh
 }
 
 // --- SCRIPTS WORKSPACE ---
-function ScriptsWorkspace({ scripts, projects, userProfile, isAdmin, showToast, pushNotification }) {
-  const [selectedScriptId, setSelectedScriptId] = useState(null);
+function ScriptsWorkspace({ scripts, projects, userProfile, isAdmin, showToast, pushNotification, selectedScriptId, setSelectedScriptId }) {
   const [showNewTopicModal, setShowNewTopicModal] = useState(false);
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [relatedProjectId, setRelatedProjectId] = useState('');
@@ -2198,7 +2199,7 @@ function WhiteboardChat({ chats, userProfile, chatChannel, setChatChannel, pushN
 }
 
 // --- INSTA FEED ---
-function PostsWorkspace({ posts, projects, userProfile, showToast, pushNotification, isAdmin, onInspectUser }) {
+function PostsWorkspace({ posts, projects, userProfile, showToast, pushNotification, isAdmin, onInspectUser, expandedPost, setExpandedPost }) {
   const [postTitle, setPostTitle] = useState('');
   const [postText, setPostText] = useState('');
   const [relatedProjectId, setRelatedProjectId] = useState('');
@@ -2207,8 +2208,6 @@ function PostsWorkspace({ posts, projects, userProfile, showToast, pushNotificat
   const [postToDelete, setPostToDelete] = useState(null);
   const [commentToDelete, setCommentToDelete] = useState(null);
   const fileInputRef = useRef(null);
-  
-  const [expandedPost, setExpandedPost] = useState(null);
 
   const publishPost = async (e) => {
     e.preventDefault();
