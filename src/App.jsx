@@ -516,9 +516,25 @@ export default function App() {
 
   const pushNotification = useCallback(async (message, type = 'system', meta = {}, actorName = 'Crew Member', audience = 'all') => {
     if (isRoastingWaiter || !db || !db.app || userProfile?.status !== 'approved') return;
-    try { await addDoc(collection(db, 'notifications'), { message, type, meta, actor: actorName, timestamp: Date.now(), audience }); } catch (err) {}
-  }, [isRoastingWaiter, userProfile]);
+    try {
+      await addDoc(collection(db, 'notifications'), { message, type, meta, actor: actorName, timestamp: Date.now(), audience });
 
+      const targets = profiles.filter(p => {
+        if (p.id === userProfile.id) return false;
+        if (!p.fcmToken) return false;
+        if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
+        return true;
+      });
+
+      await Promise.all(targets.map(p =>
+        fetch('/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: message }),
+        }).catch(() => {})
+      ));
+    } catch (err) {}
+  }, [isRoastingWaiter, userProfile, profiles]);
   const ensureProfileDoc = useCallback(async (user) => {
     if (!db || !db.app) return null;
     const ref = doc(db, 'profiles', user.uid);
