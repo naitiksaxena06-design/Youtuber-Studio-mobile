@@ -549,10 +549,21 @@ export default function App() {
       };
       await setDoc(ref, newProfile);
       if (!isOwner) {
-        await addDoc(collection(db, 'notifications'), { 
+        const notifRef = await addDoc(collection(db, 'notifications'), { 
           message: `New crew application from ${newProfile.name}. Awaiting approval on roster list.`, 
           type: 'system', actor: 'System', timestamp: Date.now(), audience: "admin" 
         });
+        try {
+          const adminSnap = await getDocs(collection(db, 'profiles'));
+          const admins = adminSnap.docs.map(d => d.data()).filter(p => (p.role === 'admin' || p.role === 'owner') && p.fcmToken);
+          await Promise.all(admins.map(p =>
+            fetch('/api/send-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: `New crew application from ${newProfile.name}` }),
+            }).catch(() => {})
+          ));
+        } catch (e) {}
       }
       return newProfile;
     } else if (isOwner && snap.data().role !== 'owner') { await updateDoc(ref, { role: 'owner', status: 'approved' }); }
