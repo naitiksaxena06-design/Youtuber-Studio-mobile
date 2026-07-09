@@ -1565,7 +1565,9 @@ function ProjectBoard({ projects, tasks, videos, scripts, posts, userProfile, sh
     e.preventDefault();
     if (!newConcept.trim() || !db || !db.app) return;
     try {
-      await addDoc(collection(db, 'projects'), { title: newConcept, creatorName: userProfile.name, createdAt: Date.now() });
+      const projectRef = await addDoc(collection(db, 'projects'), { title: newConcept, creatorName: userProfile.name, createdAt: Date.now() });
+      const defaultItems = ['Script', 'Video shoot', 'Title', 'Planning done', 'Editing', 'Thumbnail', 'Upload'];
+      await Promise.all(defaultItems.map(itemTitle => addDoc(collection(db, 'tasks'), { projectId: projectRef.id, title: itemTitle, status: 'To Do' })));
       pushNotification(`Created whiteboard: "${newConcept}"`, 'project', {}, userProfile.name);
       setNewConcept(''); showToast('Artboard concept mapped!', 'success');
     } catch(err) {}
