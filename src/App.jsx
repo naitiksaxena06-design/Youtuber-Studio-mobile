@@ -687,8 +687,17 @@ export default function App() {
             <button 
               onClick={async () => {
                 const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                  new Notification("Youtubers Studio", { body: "Alerts synced! 🎉" });
+                if (permission === "granted" && messaging) {
+                  try {
+                    const swReg = await navigator.serviceWorker.ready;
+                    const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
+                    if (token && userProfile && db && db.app) {
+                      await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token });
+                      showToast('Alerts synced! 🎉', 'success');
+                    } else {
+                      showToast('Could not get device token.', 'warning');
+                    }
+                  } catch (err) { showToast('Token setup failed: ' + err.message, 'warning'); }
                 }
               }}
               className="text-[10px] bg-amber-500/20 text-amber-700 px-2.5 py-1 rounded-md font-bold"
