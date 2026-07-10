@@ -649,7 +649,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [loadingLibraries, isAdmin]);
   useEffect(() => {
-  useEffect(() => {
     const autoFetchToken = async () => {
       if (!messaging) { alert('DEBUG: messaging is null/undefined'); return; }
       if (!userProfile) { return; }
