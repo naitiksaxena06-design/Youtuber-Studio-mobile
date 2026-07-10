@@ -210,6 +210,32 @@ const compressAndConvertImage = (file, maxDim = 150) => {
     reader.onerror = (err) => reject(err);
   });
 };
+const svgToPngIcon = (svgString) => {
+  return new Promise((resolve) => {
+    try {
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 96;
+        canvas.height = 96;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 96, 96);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+      img.src = url;
+    } catch (e) { resolve(''); }
+  });
+};
+
+const resolveNotificationIcon = async (photoURL) => {
+  if (!photoURL) return '';
+  if (photoURL.startsWith('<svg')) return await svgToPngIcon(photoURL);
+  return photoURL.length < 2500 ? photoURL : '';
+};
 
 const resolvePlayableVideo = (url) => {
   if (!url) return { type: 'none', src: '', thumbnail: null };
@@ -483,26 +509,15 @@ export default function App() {
         seenTokens.add(p.fcmToken);
         return true;
       });
+      const iconForPush = await resolveNotificationIcon(userProfile?.photoURL);
 
       await Promise.all(uniqueTargets.map(async (p) => {
         try {
           const res = await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-  token: p.fcmToken, 
-  title: actorName, 
-  body: message,
-  icon: (() => {
-  const p = userProfile?.photoURL || '';
-  if (!p) return '';
-  if (p.startsWith('<svg')) {
-    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p)));
-  }
-  return p.length < 2500 ? p : '';
-})()
-}),
-          });
+        body: JSON.stringify({ token: p.fcmToken, title: actorName, body: message, icon: iconForPush }),    
+  
           if (res.status === 410 && db && db.app) {
             await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
           }
