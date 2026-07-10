@@ -5,6 +5,7 @@ import {
   onAuthStateChanged, signInAnonymously, signInWithCustomToken,
   signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from 'firebase/auth';
+import { getMessaging, getToken } from 'firebase/messaging';
 import { 
   getFirestore, doc as fbDoc, setDoc, updateDoc, deleteDoc, getDoc,
   collection as fbCollection, addDoc, onSnapshot, query, orderBy, limit as fbLimit,
@@ -30,14 +31,15 @@ if ('serviceWorker' in navigator) {
       .catch((err) => { alert('SW REGISTRATION FAILED: ' + err.message); });
   });
 }
-let app, auth, db;
+let app, auth, db, messaging;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  try { messaging = getMessaging(app); } catch (e) { messaging = null; }
 } catch (e) {
   console.error("Firebase critical initialization failed.", e);
-  app = {}; auth = { currentUser: null }; db = {};
+  app = {}; auth = { currentUser: null }; db = {}; messaging = null;
 }
 
 const googleProvider = new GoogleAuthProvider();
