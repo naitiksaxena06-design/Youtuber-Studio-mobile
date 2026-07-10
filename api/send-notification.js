@@ -1,5 +1,11 @@
 import admin from 'firebase-admin';
 
+console.log('KEY DEBUG - starts with:', process.env.FIREBASE_PRIVATE_KEY?.substring(0, 30));
+console.log('KEY DEBUG - ends with:', process.env.FIREBASE_PRIVATE_KEY?.substring(process.env.FIREBASE_PRIVATE_KEY.length - 30));
+console.log('KEY DEBUG - length:', process.env.FIREBASE_PRIVATE_KEY?.length);
+console.log('KEY DEBUG - contains real newline:', process.env.FIREBASE_PRIVATE_KEY?.includes('\n'));
+console.log('KEY DEBUG - contains literal backslash-n:', process.env.FIREBASE_PRIVATE_KEY?.includes('\\n'));
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
