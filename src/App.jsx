@@ -25,7 +25,9 @@ const firebaseConfig = {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => { alert('SW REGISTERED: ' + reg.scope); })
+      .catch((err) => { alert('SW REGISTRATION FAILED: ' + err.message); });
   });
 }
 let app, auth, db;
