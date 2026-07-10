@@ -31,6 +31,7 @@ export default async function handler(req, res) {
     res.status(200).json({ success: true });
   } catch (err) {
     console.error('SEND NOTIFICATION ERROR:', err);
-    res.status(500).json({ error: err.message, stack: err.stack });
+    const isInvalidToken = err.code === 'messaging/registration-token-not-registered' || err.code === 'messaging/invalid-registration-token';
+    res.status(isInvalidToken ? 410 : 500).json({ error: err.message, invalidToken: isInvalidToken });
   }
 }
