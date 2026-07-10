@@ -478,13 +478,18 @@ export default function App() {
         return true;
       });
 
-      await Promise.all(targets.map(p =>
-        fetch('/api/send-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: message }),
-        }).catch(() => {})
-      ));
+      await Promise.all(targets.map(async (p) => {
+        try {
+          const res = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: message }),
+          });
+          if (res.status === 410 && db && db.app) {
+            await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
+          }
+        } catch (e) {}
+      }));
     } catch (err) {}
   }, [isRoastingWaiter, userProfile, profiles]);
   const ensureProfileDoc = useCallback(async (user) => {
