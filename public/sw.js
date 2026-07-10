@@ -15,13 +15,13 @@ self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.data || {};
+  const { title, body, icon } = payload.data || {};
   self.registration.showNotification(title || 'Youtubers Studio', {
     body: body || '',
-    tag: payload.messageId || payload.data?.title || 'default',
+    icon: icon || undefined,
+    tag: payload.messageId || title || 'default',
   });
 });
-
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
