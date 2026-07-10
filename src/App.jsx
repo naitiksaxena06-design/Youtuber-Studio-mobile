@@ -627,9 +627,17 @@ export default function App() {
   useEffect(() => {
     if (!messaging) return;
     const unsubscribe = onMessage(messaging, (payload) => {
+      if (document.visibilityState !== 'visible') return;
       const { title, body } = payload.notification || {};
+      const tag = payload.messageId || payload.collapseKey || (title + body);
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification(title || 'Youtubers Studio', { body: body || '' });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title || 'Youtubers Studio', { body: body || '', tag });
+          });
+        } else {
+          new Notification(title || 'Youtubers Studio', { body: body || '', tag });
+        }
       }
     });
     return () => { if (unsubscribe) unsubscribe(); };
