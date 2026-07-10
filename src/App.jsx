@@ -513,13 +513,18 @@ export default function App() {
         try {
           const adminSnap = await getDocs(collection(db, 'profiles'));
           const admins = adminSnap.docs.map(d => d.data()).filter(p => (p.role === 'admin' || p.role === 'owner') && p.fcmToken);
-          await Promise.all(admins.map(p =>
-            fetch('/api/send-notification', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: `New crew application from ${newProfile.name}` }),
-            }).catch(() => {})
-          ));
+          await Promise.all(admins.map(async (p) => {
+            try {
+              const res = await fetch('/api/send-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: `New crew application from ${newProfile.name}` }),
+              });
+              if (res.status === 410 && db && db.app) {
+                await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
+              }
+            } catch (e) {}
+          }));
         } catch (e) {}
       }
       return newProfile;
@@ -2623,11 +2628,14 @@ const approve = async (uid) => {
       const targetSnap = await getDoc(doc(db, 'profiles', uid));
       const target = targetSnap.data();
       if (target?.fcmToken) {
-        await fetch('/api/send-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: target.fcmToken, title: 'Youtubers Studio', body: `Welcome aboard, ${target.name}! Your crew application has been approved 🎉` }),
-        }).catch(() => {});
+        try {
+          const res = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: target.fcmToken, title: 'Youtubers Studio', body: `Welcome aboard, ${target.name}! Your crew application has been approved 🎉` }),
+          });
+          if (res.status === 410) { await updateDoc(doc(db, 'profiles', uid), { fcmToken: null }); }
+        } catch (e) {}
       }
     } catch (e) {}
   };
