@@ -648,6 +648,19 @@ export default function App() {
     const timer = setInterval(() => { syncYouTubeStats(ytConfigRef.current.channelId, ytConfigRef.current.apiKey, true); }, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [loadingLibraries, isAdmin]);
+  useEffect(() => {
+    const autoFetchToken = async () => {
+      if (!messaging || !userProfile || !db || !db.app) return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      if (userProfile.fcmToken) return;
+      try {
+        const swReg = await navigator.serviceWorker.ready;
+        const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
+        if (token) { await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token }); }
+      } catch (e) {}
+    };
+    autoFetchToken();
+  }, [userProfile]);
 
   useEffect(() => {
     injectArtStyleStyles();
