@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token, title, body } = req.body;
+  const { token, title, body, icon } = req.body;
 
   if (!token || !title) {
     return res.status(400).json({ error: 'Missing token or title' });
@@ -29,6 +29,7 @@ export default async function handler(req, res) {
       data: {
         title,
         body: body || '',
+        icon: icon || '',
       },
     });
     res.status(200).json({ success: true });
