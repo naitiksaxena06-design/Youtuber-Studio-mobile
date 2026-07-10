@@ -713,18 +713,22 @@ export default function App() {
           {typeof Notification !== "undefined" && Notification.permission !== "granted" && (
             <button 
               onClick={async () => {
+                alert('DEBUG: requesting permission...');
                 const permission = await Notification.requestPermission();
+                alert('DEBUG: permission result = ' + permission);
                 if (permission === "granted" && messaging) {
                   try {
                     const swReg = await navigator.serviceWorker.ready;
+                    alert('DEBUG: sw ready, fetching token...');
                     const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
+                    alert('DEBUG: token = ' + (token ? token.substring(0, 20) + '...' : 'EMPTY'));
                     if (token && userProfile && db && db.app) {
                       await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token });
-                      showToast('Alerts synced! 🎉', 'success');
-                    } else {
-                      showToast('Could not get device token.', 'warning');
+                      alert('DEBUG: saved to firestore!');
                     }
-                  } catch (err) { showToast('Token setup failed: ' + err.message, 'warning'); }
+                  } catch (err) { alert('DEBUG ERROR: ' + err.message); }
+                } else {
+                  alert('DEBUG: permission NOT granted, it is: ' + permission + ' (or messaging missing: ' + !messaging + ')');
                 }
               }}
               className="text-[10px] bg-amber-500/20 text-amber-700 px-2.5 py-1 rounded-md font-bold"
