@@ -211,6 +211,7 @@ const compressAndConvertImage = (file, maxDim = 150) => {
   });
 };
 const svgToPngIcon = (svgString) => {
+const svgToPngIcon = (svgString) => {
   return new Promise((resolve) => {
     try {
       const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -218,12 +219,12 @@ const svgToPngIcon = (svgString) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = 96;
-        canvas.height = 96;
+        canvas.width = 48;
+        canvas.height = 48;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, 96, 96);
+        ctx.drawImage(img, 0, 0, 48, 48);
         URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
+        resolve(canvas.toDataURL('image/png', 0.6));
       };
       img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
       img.src = url;
@@ -233,8 +234,15 @@ const svgToPngIcon = (svgString) => {
 
 const resolveNotificationIcon = async (photoURL) => {
   if (!photoURL) return '';
-  if (photoURL.startsWith('<svg')) return await svgToPngIcon(photoURL);
-  return photoURL.length < 2500 ? photoURL : '';
+  let result = '';
+  if (photoURL.startsWith('<svg')) {
+    result = await svgToPngIcon(photoURL);
+  } else {
+    result = photoURL;
+  }
+  // Hard safety gate: FCM data payloads must stay under ~4KB total.
+  // Anything over ~1500 chars for the icon alone is too risky to send.
+  return (result && result.length < 1500) ? result : '';
 };
 
 const resolvePlayableVideo = (url) => {
