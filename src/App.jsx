@@ -489,7 +489,12 @@ export default function App() {
           const res = await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: message }),
+            body: JSON.stringify({ 
+  token: p.fcmToken, 
+  title: actorName, 
+  body: message,
+  icon: (userProfile?.photoURL && userProfile.photoURL.length < 2500) ? userProfile.photoURL : ''
+}),
           });
           if (res.status === 410 && db && db.app) {
             await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
@@ -524,7 +529,12 @@ export default function App() {
               const res = await fetch('/api/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: p.fcmToken, title: 'Youtubers Studio', body: `New crew application from ${newProfile.name}` }),
+                body: JSON.stringify({ 
+  token: p.fcmToken, 
+  title: newProfile.name, 
+  body: 'Applied to join the crew — awaiting approval',
+  icon: (newProfile.photoURL && newProfile.photoURL.length < 2500) ? newProfile.photoURL : ''
+}),
               });
               if (res.status === 410 && db && db.app) {
                 await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
