@@ -9,6 +9,8 @@ firebase.initializeApp({
   messagingSenderId: "414676912966",
   appId: "1:414676912966:web:f4b40db19d4326ba3db347"
 });
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
 const messaging = firebase.messaging();
 
