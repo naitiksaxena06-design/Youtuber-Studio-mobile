@@ -2611,7 +2611,21 @@ function AdminPanel({ profiles, siteSettings, ytConfig, syncYouTubeStats, userPr
     try { await setDoc(doc(db, 'meta/settings'), { logoText: logoTxt }, { merge: true }); showToast('Logo text saved!', 'success'); } catch (err) { showToast('Error saving logo text.', 'warning'); }
   };
 
-  const approve = (uid) => { if (db && db.app) updateDoc(doc(db, 'profiles', uid), { status: 'approved' }); };
+const approve = async (uid) => {
+    if (!db || !db.app) return;
+    await updateDoc(doc(db, 'profiles', uid), { status: 'approved' });
+    try {
+      const targetSnap = await getDoc(doc(db, 'profiles', uid));
+      const target = targetSnap.data();
+      if (target?.fcmToken) {
+        await fetch('/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: target.fcmToken, title: 'Youtubers Studio', body: `Welcome aboard, ${target.name}! Your crew application has been approved 🎉` }),
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  };
   const promote = (uid) => { if (db && db.app) updateDoc(doc(db, 'profiles', uid), { role: 'admin', status: 'approved' }); };
   const makeWaiter = (uid) => { if (db && db.app) updateDoc(doc(db, 'profiles', uid), { role: 'roasting waiter', status: 'approved' }); };
   const demote = (uid) => { if (db && db.app) updateDoc(doc(db, 'profiles', uid), { role: 'member' }); };
