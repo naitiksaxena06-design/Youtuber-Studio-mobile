@@ -649,15 +649,28 @@ export default function App() {
     return () => clearInterval(timer);
   }, [loadingLibraries, isAdmin]);
   useEffect(() => {
+  useEffect(() => {
     const autoFetchToken = async () => {
-      if (!messaging || !userProfile || !db || !db.app) return;
-      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-      if (userProfile.fcmToken) return;
+      if (!messaging) { alert('DEBUG: messaging is null/undefined'); return; }
+      if (!userProfile) { return; }
+      if (!db || !db.app) { alert('DEBUG: db not ready'); return; }
+      if (typeof Notification === 'undefined') { alert('DEBUG: Notification API unavailable'); return; }
+      if (Notification.permission !== 'granted') { alert('DEBUG: permission is ' + Notification.permission); return; }
+      if (userProfile.fcmToken) { alert('DEBUG: token already exists'); return; }
       try {
         const swReg = await navigator.serviceWorker.ready;
+        alert('DEBUG: service worker ready, fetching token...');
         const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
-        if (token) { await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token }); }
-      } catch (e) {}
+        if (token) {
+          alert('DEBUG: got token, saving...');
+          await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token });
+          alert('DEBUG: saved successfully!');
+        } else {
+          alert('DEBUG: getToken returned empty/null');
+        }
+      } catch (e) {
+        alert('DEBUG ERROR: ' + e.message);
+      }
     };
     autoFetchToken();
   }, [userProfile]);
