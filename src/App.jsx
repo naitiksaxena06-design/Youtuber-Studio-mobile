@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signInAnonymously, signInWithCustomToken,
   signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from 'firebase/auth';
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { 
   getFirestore, doc as fbDoc, setDoc, updateDoc, deleteDoc, getDoc,
   collection as fbCollection, addDoc, onSnapshot, query, orderBy, limit as fbLimit,
@@ -26,9 +26,7 @@ const firebaseConfig = {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((reg) => { alert('SW REGISTERED: ' + reg.scope); })
-      .catch((err) => { alert('SW REGISTRATION FAILED: ' + err.message); });
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
 let app, auth, db, messaging;
@@ -654,29 +652,28 @@ export default function App() {
   }, [loadingLibraries, isAdmin]);
   useEffect(() => {
     const autoFetchToken = async () => {
-      if (!messaging) { alert('DEBUG: messaging is null/undefined'); return; }
-      if (!userProfile) { return; }
-      if (!db || !db.app) { alert('DEBUG: db not ready'); return; }
-      if (typeof Notification === 'undefined') { alert('DEBUG: Notification API unavailable'); return; }
-      if (Notification.permission !== 'granted') { alert('DEBUG: permission is ' + Notification.permission); return; }
-      if (userProfile.fcmToken) { alert('DEBUG: token already exists'); return; }
+      if (!messaging || !userProfile || !db || !db.app) return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      if (userProfile.fcmToken) return;
       try {
         const swReg = await navigator.serviceWorker.ready;
-        alert('DEBUG: service worker ready, fetching token...');
         const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
-        if (token) {
-          alert('DEBUG: got token, saving...');
-          await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token });
-          alert('DEBUG: saved successfully!');
-        } else {
-          alert('DEBUG: getToken returned empty/null');
-        }
-      } catch (e) {
-        alert('DEBUG ERROR: ' + e.message);
-      }
+        if (token) { await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token }); }
+      } catch (e) {}
     };
     autoFetchToken();
   }, [userProfile]);
+  
+  useEffect(() => {
+    if (!messaging) return;
+    const unsubscribe = onMessage(messaging, (payload) => {
+      const { title, body } = payload.notification || {};
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(title || 'Youtubers Studio', { body: body || '' });
+      }
+    });
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [messaging]);
 
   useEffect(() => {
     injectArtStyleStyles();
@@ -715,22 +712,19 @@ export default function App() {
           {typeof Notification !== "undefined" && Notification.permission !== "granted" && (
             <button 
               onClick={async () => {
-                alert('DEBUG: requesting permission...');
+              onClick={async () => {
                 const permission = await Notification.requestPermission();
-                alert('DEBUG: permission result = ' + permission);
                 if (permission === "granted" && messaging) {
                   try {
                     const swReg = await navigator.serviceWorker.ready;
-                    alert('DEBUG: sw ready, fetching token...');
                     const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
-                    alert('DEBUG: token = ' + (token ? token.substring(0, 20) + '...' : 'EMPTY'));
                     if (token && userProfile && db && db.app) {
                       await updateDoc(doc(db, 'profiles', userProfile.id), { fcmToken: token });
-                      alert('DEBUG: saved to firestore!');
+                      showToast('Alerts synced! 🎉', 'success');
+                    } else {
+                      showToast('Could not get device token.', 'warning');
                     }
-                  } catch (err) { alert('DEBUG ERROR: ' + err.message); }
-                } else {
-                  alert('DEBUG: permission NOT granted, it is: ' + permission + ' (or messaging missing: ' + !messaging + ')');
+                  } catch (err) { showToast('Token setup failed: ' + err.message, 'warning'); }
                 }
               }}
               className="text-[10px] bg-amber-500/20 text-amber-700 px-2.5 py-1 rounded-md font-bold"
