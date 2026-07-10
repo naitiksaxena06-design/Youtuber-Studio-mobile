@@ -493,7 +493,14 @@ export default function App() {
   token: p.fcmToken, 
   title: actorName, 
   body: message,
-  icon: (userProfile?.photoURL && userProfile.photoURL.length < 2500) ? userProfile.photoURL : ''
+  icon: (() => {
+  const p = userProfile?.photoURL || '';
+  if (!p) return '';
+  if (p.startsWith('<svg')) {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p)));
+  }
+  return p.length < 2500 ? p : '';
+})()
 }),
           });
           if (res.status === 410 && db && db.app) {
@@ -533,7 +540,14 @@ export default function App() {
   token: p.fcmToken, 
   title: newProfile.name, 
   body: 'Applied to join the crew — awaiting approval',
-  icon: (newProfile.photoURL && newProfile.photoURL.length < 2500) ? newProfile.photoURL : ''
+  icon: (() => {
+  const p = newProfile.photoURL || '';
+  if (!p) return '';
+  if (p.startsWith('<svg')) {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p)));
+  }
+  return p.length < 2500 ? p : '';
+})()
 }),
               });
               if (res.status === 410 && db && db.app) {
