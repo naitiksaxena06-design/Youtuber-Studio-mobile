@@ -477,8 +477,14 @@ export default function App() {
         if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
         return true;
       });
+      const seenTokens = new Set();
+      const uniqueTargets = targets.filter(p => {
+        if (seenTokens.has(p.fcmToken)) return false;
+        seenTokens.add(p.fcmToken);
+        return true;
+      });
 
-      await Promise.all(targets.map(async (p) => {
+      await Promise.all(uniqueTargets.map(async (p) => {
         try {
           const res = await fetch('/api/send-notification', {
             method: 'POST',
