@@ -465,56 +465,6 @@ export default function App() {
   const seenNotifIdsRef = useRef(new Set());
   const firstNotifLoadRef = useRef(true);
   
-  useEffect(() => {
-    if (!userProfile || isRoastingWaiter || userProfile.status !== 'approved') return;
-    if (firstNotifLoadRef.current) {
-      (notifications || []).forEach(n => n && seenNotifIdsRef.current.add(n.id));
-      firstNotifLoadRef.current = false;
-      return;
-    }
-    
-    (notifications || []).forEach(n => {
-      if (!n || !n.message || seenNotifIdsRef.current.has(n.id)) return;
-      seenNotifIdsRef.current.add(n.id);
-      
-      if (n.actor === userProfile.name) return;
-      if (currentPage === 'vault' && n.type === 'video') return;
-      if (currentPage === 'projects' && n.type === 'project') return;
-      if (currentPage === 'scripts' && n.type === 'script') return;
-      if (currentPage === 'posts' && n.type === 'post') return;
-      if (currentPage === 'admin' && n.type === 'system') return;
-      if (currentPage === 'chat' && n.type === 'chat' && n.meta?.channelId === chatChannel && chatViewMode === 'chat') return;
-
-      const audience = n.audience || 'all';
-      const relevant = audience === 'all' || (audience === 'admin' && isAdmin);
-      
-      if (relevant && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        try { 
-          const options = {
-            body: n.message,
-            icon: siteSettings.logoUrl || undefined,
-            badge: siteSettings.logoUrl || undefined,
-            tag: n.id,
-            renotify: true,
-            requireInteraction: true 
-          };
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistration().then(reg => {
-              if (reg && reg.showNotification) {
-                reg.showNotification('Youtubers Studio', options);
-              } else {
-                new Notification('Youtubers Studio', options);
-              }
-            }).catch(() => {
-              new Notification('Youtubers Studio', options);
-            });
-          } else {
-            new Notification('Youtubers Studio', options);
-          }
-        } catch (e) { console.error("Native push dispatch failure", e); }
-      }
-    });
-  }, [notifications, userProfile, isAdmin, siteSettings.logoUrl, currentPage, chatChannel, chatViewMode, isRoastingWaiter]);
 
   const pushNotification = useCallback(async (message, type = 'system', meta = {}, actorName = 'Crew Member', audience = 'all') => {
     if (isRoastingWaiter || !db || !db.app || userProfile?.status !== 'approved') return;
