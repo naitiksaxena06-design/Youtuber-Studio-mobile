@@ -512,6 +512,7 @@ export default function App() {
   if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
   return true;
 });
+});               
 const seenTokens = new Set();
 const uniqueTargets = [];
 eligibleProfiles.forEach(p => {
@@ -533,10 +534,8 @@ eligibleProfiles.forEach(p => {
          if (res.status === 410 && db && db.app) {
   await updateDoc(doc(db, 'profiles', p.id), { [p.tokenField]: null });
          }
-          }
         } catch (e) {}
       }));
-    } catch (err) {}
   }, [isRoastingWaiter, userProfile, profiles]);
   const ensureProfileDoc = useCallback(async (user) => {
     if (!db || !db.app) return null;
