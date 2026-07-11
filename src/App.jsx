@@ -527,14 +527,16 @@ eligibleProfiles.forEach(p => {
 
       await Promise.all(uniqueTargets.map(async (p) => {
         try {
-          const res = await fetch('/api/send-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: p.fcmToken, title: actorName, body: message, icon: iconForPush }),
-          });
-         if (res.status === 410 && db && db.app) {
-  await updateDoc(doc(db, 'profiles', p.id), { [p.tokenField]: null });
-         }
+          const targetToken = p.fcmTokenDesktop || p.fcmTokenMobile;
+const tokenField = p.fcmTokenDesktop ? 'fcmTokenDesktop' : 'fcmTokenMobile';
+const res = await fetch('/api/send-notification', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token: targetToken, title: newProfile.name, body: 'Applied to join the crew — awaiting approval', icon: applicantIcon }),
+});
+if (res.status === 410 && db && db.app) {
+  await updateDoc(doc(db, 'profiles', p.id), { [tokenField]: null });
+}
         } catch (e) {}
       }));
       } catch (err) {
@@ -561,7 +563,7 @@ eligibleProfiles.forEach(p => {
         });
         try {
           const adminSnap = await getDocs(collection(db, 'profiles'));
-          const admins = adminSnap.docs.map(d => d.data()).filter(p => (p.role === 'admin' || p.role === 'owner') && p.fcmToken);
+          const admins = adminSnap.docs.map(d => d.data()).filter(p => (p.role === 'admin' || p.role === 'owner') && (p.fcmTokenMobile || p.fcmTokenDesktop));
           await Promise.all(admins.map(async (p) => {
             try {
               const res = await fetch('/api/send-notification', {
@@ -675,7 +677,7 @@ eligibleProfiles.forEach(p => {
     const autoFetchToken = async () => {
       if (!messaging || !userProfile || !db || !db.app) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-      if (userProfile.fcmToken) return;
+      if (userProfile.fcmTokenmobile) return;
       try {
         const swReg = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
@@ -684,6 +686,39 @@ eligibleProfiles.forEach(p => {
     };
     autoFetchToken();
   }, [userProfile]);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+
+useEffect(() => {
+  if (!userProfile || userProfile.status !== 'approved' || isRoastingWaiter) return;
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission !== 'default') return; // already granted or denied — nothing to ask
+  const dismissedKey = 'notifPromptDismissed_' + userProfile.id;
+  if (sessionStorage.getItem(dismissedKey)) return;
+  const timer = setTimeout(() => setShowNotifPrompt(true), 2000);
+  return () => clearTimeout(timer);
+}, [userProfile, isRoastingWaiter]);
+
+const handleEnableNotificationsPrompt = async () => {
+  setShowNotifPrompt(false);
+  if (userProfile) sessionStorage.setItem('notifPromptDismissed_' + userProfile.id, '1');
+  if (typeof Notification === 'undefined' || !messaging) return;
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    try {
+      const swReg = await navigator.serviceWorker.ready;
+      const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
+      if (token && userProfile && db && db.app) {
+        await updateDoc(doc(db, 'profiles', userProfile.id), { fcmTokenMobile: token });
+        showToast('Alerts enabled! 🎉', 'success');
+      }
+    } catch (e) {}
+  }
+};
+
+const dismissNotifPrompt = () => {
+  setShowNotifPrompt(false);
+  if (userProfile) sessionStorage.setItem('notifPromptDismissed_' + userProfile.id, '1');
+};
   
   useEffect(() => {
     if (!messaging) return;
@@ -726,6 +761,19 @@ eligibleProfiles.forEach(p => {
       {customToast && (
         <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[99999] px-6 py-3 rounded-full shadow-skeuo-lg text-xs font-bold text-white transition-all animate-bounce ${customToast.type === 'success' ? 'bg-[#2ba640]' : 'bg-[#C5A03A]'}`}>{customToast.message}</div>
       )}
+      {showNotifPrompt && (
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] bg-white border-2 border-[#EADFC9] rounded-2xl shadow-skeuo-lg p-4 max-w-sm w-[90%] flex items-center gap-3 animate-fadeIn">
+    <span className="text-2xl">🔔</span>
+    <div className="flex-1 text-xs">
+      <p className="font-bold text-slate-800">Turn on notifications?</p>
+      <p className="text-slate-500 mt-0.5">Get alerted when crew members message, comment, or upload.</p>
+    </div>
+    <div className="flex flex-col gap-1.5 shrink-0">
+      <button onClick={handleEnableNotificationsPrompt} className="bg-[#C5A03A] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg">Allow</button>
+      <button onClick={dismissNotifPrompt} className="text-slate-400 text-[10px] font-bold px-3 py-1">Not now</button>
+    </div>
+  </div>
+)}
 
       {/* --- HEADER --- */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-[#FFFDF9]/85 border-b-2 border-[#EADFC9]/60 px-4 sm:px-6 py-3 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.03)] font-sans">
