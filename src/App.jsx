@@ -506,17 +506,22 @@ export default function App() {
       await addDoc(collection(db, 'notifications'), { message, type, meta, actor: actorName, timestamp: Date.now(), audience });
 
       const targets = profiles.filter(p => {
-        if (p.id === userProfile.id) return false;
-        if (!p.fcmToken) return false;
-        if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
-        return true;
-      });
-      const seenTokens = new Set();
-      const uniqueTargets = targets.filter(p => {
-        if (seenTokens.has(p.fcmToken)) return false;
-        seenTokens.add(p.fcmToken);
-        return true;
-      });
+      const eligibleProfiles = profiles.filter(p => {
+  if (p.id === userProfile.id) return false;
+  if (!p.fcmTokenMobile && !p.fcmTokenDesktop) return false;
+  if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
+  return true;
+});
+const seenTokens = new Set();
+const uniqueTargets = [];
+eligibleProfiles.forEach(p => {
+  [{ field: 'fcmTokenMobile', token: p.fcmTokenMobile }, { field: 'fcmTokenDesktop', token: p.fcmTokenDesktop }].forEach(({ field, token }) => {
+    if (token && !seenTokens.has(token)) {
+      seenTokens.add(token);
+      uniqueTargets.push({ id: p.id, fcmToken: token, tokenField: field });
+    }
+  });
+});
       const iconForPush = await resolveNotificationIcon(userProfile?.photoURL);
 
       await Promise.all(uniqueTargets.map(async (p) => {
@@ -526,8 +531,9 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: p.fcmToken, title: actorName, body: message, icon: iconForPush }),
           });
-          if (res.status === 410 && db && db.app) {
-            await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
+         if (res.status === 410 && db && db.app) {
+  await updateDoc(doc(db, 'profiles', p.id), { [p.tokenField]: null });
+         }
           }
         } catch (e) {}
       }));
