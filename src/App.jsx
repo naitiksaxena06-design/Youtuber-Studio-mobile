@@ -505,14 +505,14 @@ export default function App() {
     try {
       await addDoc(collection(db, 'notifications'), { message, type, meta, actor: actorName, timestamp: Date.now(), audience });
 
-      const targets = profiles.filter(p => {
       const eligibleProfiles = profiles.filter(p => {
   if (p.id === userProfile.id) return false;
   if (!p.fcmTokenMobile && !p.fcmTokenDesktop) return false;
-  if (audience === 'admin') return p.role === 'admin' || p.role === 'owner';
+  if (audience === 'admin') {
+    return p.role === 'admin' || p.role === 'owner';
+  }
   return true;
-});
-});               
+});    
 const seenTokens = new Set();
 const uniqueTargets = [];
 eligibleProfiles.forEach(p => {
