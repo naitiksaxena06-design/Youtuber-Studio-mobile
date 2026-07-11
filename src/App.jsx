@@ -210,7 +210,7 @@ const compressAndConvertImage = (file, maxDim = 150) => {
     reader.onerror = (err) => reject(err);
   });
 };
-const svgToPngIcon = (svgString) => {
+
 const svgToPngIcon = (svgString) => {
   return new Promise((resolve) => {
     try {
