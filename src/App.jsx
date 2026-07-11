@@ -537,6 +537,9 @@ eligibleProfiles.forEach(p => {
          }
         } catch (e) {}
       }));
+      } catch (err) {
+  console.error(err);
+    }
   }, [isRoastingWaiter, userProfile, profiles]);
   const ensureProfileDoc = useCallback(async (user) => {
     if (!db || !db.app) return null;
