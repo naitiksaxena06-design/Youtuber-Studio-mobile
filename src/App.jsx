@@ -521,7 +521,8 @@ eligibleProfiles.forEach(p => {
       seenTokens.add(token);
       uniqueTargets.push({ id: p.id, fcmToken: token, tokenField: field });
     }
-  });
+  }); 
+});
       const iconForPush = await resolveNotificationIcon(userProfile?.photoURL);
 
       await Promise.all(uniqueTargets.map(async (p) => {
