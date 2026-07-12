@@ -527,20 +527,18 @@ eligibleProfiles.forEach(p => {
 
       await Promise.all(uniqueTargets.map(async (p) => {
         try {
-          const targetToken = p.fcmTokenDesktop || p.fcmTokenMobile;
-const tokenField = p.fcmTokenDesktop ? 'fcmTokenDesktop' : 'fcmTokenMobile';
-const res = await fetch('/api/send-notification', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ token: targetToken, title: newProfile.name, body: 'Applied to join the crew — awaiting approval', icon: applicantIcon }),
-});
-if (res.status === 410 && db && db.app) {
-  await updateDoc(doc(db, 'profiles', p.id), { [tokenField]: null });
-}
+          const res = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: p.fcmToken, title: actorName, body: message, icon: iconForPush }),
+          });
+          if (res.status === 410 && db && db.app) {
+            await updateDoc(doc(db, 'profiles', p.id), { [p.tokenField]: null });
+          }
         } catch (e) {}
       }));
-      } catch (err) {
-  console.error(err);
+    } catch (err) {
+      console.error(err);
     }
   }, [isRoastingWaiter, userProfile, profiles]);
   const ensureProfileDoc = useCallback(async (user) => {
@@ -562,30 +560,18 @@ if (res.status === 410 && db && db.app) {
           type: 'system', actor: 'System', timestamp: Date.now(), audience: "admin" 
         });
         try {
-          const adminSnap = await getDocs(collection(db, 'profiles'));
           const admins = adminSnap.docs.map(d => d.data()).filter(p => (p.role === 'admin' || p.role === 'owner') && (p.fcmTokenMobile || p.fcmTokenDesktop));
+          const applicantIcon = await resolveNotificationIcon(newProfile.photoURL);
           await Promise.all(admins.map(async (p) => {
             try {
+              const targetToken = p.fcmTokenDesktop || p.fcmTokenMobile;
+              const tokenField = p.fcmTokenDesktop ? 'fcmTokenDesktop' : 'fcmTokenMobile';
               const res = await fetch('/api/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-  token: p.fcmToken, 
-  title: newProfile.name, 
-  body: 'Applied to join the crew — awaiting approval',
-  icon: (() => {
-  const p = newProfile.photoURL || '';
-  if (!p) return '';
-  if (p.startsWith('<svg')) {
-    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p)));
-  }
-  return p.length < 2500 ? p : '';
-})()
-}),
+                body: JSON.stringify({ token: targetToken, title: newProfile.name, body: 'Applied to join the crew — awaiting approval', icon: applicantIcon }),
               });
-              if (res.status === 410 && db && db.app) {
-                await updateDoc(doc(db, 'profiles', p.id), { fcmToken: null });
-              }
+              if (res.status === 410 && db && db.app) { await updateDoc(doc(db, 'profiles', p.id), { [tokenField]: null }); }
             } catch (e) {}
           }));
         } catch (e) {}
@@ -677,11 +663,13 @@ if (res.status === 410 && db && db.app) {
     const autoFetchToken = async () => {
       if (!messaging || !userProfile || !db || !db.app) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-      if (userProfile.fcmTokenmobile) return;
+      const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      const fieldName = isMobileDevice ? 'fcmTokenMobile' : 'fcmTokenDesktop';
+      if (userProfile[fieldName]) return;
       try {
         const swReg = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
-        if (token) { await updateDoc(doc(db, 'profiles', userProfile.id), { fcmTokenMobile: token }); }
+        if (token) { await updateDoc(doc(db, 'profiles', userProfile.id), { [fieldName]: token }); }
       } catch (e) {}
     };
     autoFetchToken();
@@ -708,7 +696,8 @@ const handleEnableNotificationsPrompt = async () => {
       const swReg = await navigator.serviceWorker.ready;
       const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
       if (token && userProfile && db && db.app) {
-        await updateDoc(doc(db, 'profiles', userProfile.id), { fcmTokenMobile: token });
+        const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        await updateDoc(doc(db, 'profiles', userProfile.id), { [isMobileDevice ? 'fcmTokenMobile' : 'fcmTokenDesktop']: token });
         showToast('Alerts enabled! 🎉', 'success');
       }
     } catch (e) {}
@@ -795,7 +784,8 @@ const dismissNotifPrompt = () => {
                     const swReg = await navigator.serviceWorker.ready;
                     const token = await getToken(messaging, { vapidKey: 'BNXy2GAYsoxX--4Rgt4Rs-CxEXNmdog91HvY7y6M5__9boxr9tVFJzlBW9N9Y11RLltkDSjHoXw_ctX8OIGL_A4', serviceWorkerRegistration: swReg });
                     if (token && userProfile && db && db.app) {
-                      await updateDoc(doc(db, 'profiles', userProfile.id), { fcmTokenMobile: token });
+                      const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+                      await updateDoc(doc(db, 'profiles', userProfile.id), { [isMobileDevice ? 'fcmTokenMobile' : 'fcmTokenDesktop']: token });
                       showToast('Alerts synced! 🎉', 'success');
                     } else {
                       showToast('Could not get device token.', 'warning');
